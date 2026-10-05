@@ -382,43 +382,87 @@ function parseEvent(html, baseUrl, venueName) {
     if (!existing || normalized.text.length > existing.text.length) map.set(key, normalized);
   };
 
-  // Güncel etkinlik sayfasında seanslar bir tarih/saat <time> öğesi ve aynı bloktaki
-  // <address> salon bilgisiyle sunuluyor. Önce doğrudan bu blokları yakala.
-  $('time').each((_, node) => {
-    const timeEl = $(node);
-    const timeTextRaw = cleanText(timeEl.text());
-    if (!/\b\d{1,2}\s+(?:Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)\b/i.test(timeTextRaw)) return;
+  // Güncel Biletinial sayfasında seansın salonu <address> içinde geliyor.
+  // Aynı parent içindeki önceki <time> tarih/saat, sonraki öğeler ise kalan bilet bilgisini taşıyor.
+  $('address').each((_, node) => {
+    const addressEl = $(node);
+    const hall = cleanText(addressEl.text());
+    if (!hall || hall.length > 220) return;
 
-    let container = timeEl;
-    let chosen = null;
-    for (let i = 0; i < 8 && container?.length; i++) {
-      const text = cleanText(container.text());
-      const hasHall = container.find('address').length > 0;
-      const hasTicketSignal = /(Son\s+\d+\s+Bilet|BİLETİNİ AL|TÜKENDİ|satışa açılacak|Yakında)/i.test(text);
-      if (hasHall && hasTicketSignal && text.length <= 5000) {
-        chosen = container;
-        break;
-      }
-      container = container.parent();
+    const parent = addressEl.parent();
+    const previousText = cleanText(addressEl.prevAll().slice(0, 8).text());
+    const nextText = cleanText(addressEl.nextAll().slice(0, 8).text());
+    const localText = cleanText(`${previousText} ${hall} ${nextText}`);
+
+    // Bir etkinlik seansı olduğuna dair bilet sinyali yoksa bu address öğesini atla.
+    if (!/(Son\s+\d+\s+Bilet|BİLETİNİ AL|TÜKENDİ|satışa açılacak|Yakında)/i.test(localText)) return;
+
+    let dateTimeText = cleanText(addressEl.prevAll('time').first().text());
+    if (!dateTimeText) {
+      addressEl.prevAll().each((__, sibling) => {
+        if (dateTimeText) return;
+        const candidate = cleanText($(sibling).find('time').last().text());
+        if (/\d{1,2}\s+(?:Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)/i.test(candidate)) {
+          dateTimeText = candidate;
+        }
+      });
     }
-    if (!chosen?.length) return;
 
-    const rawText = cleanText(chosen.text());
-    const { dateText, timeText } = extractDateTime(rawText);
-    const hall = cleanText(chosen.find('address').first().text()) || venueName;
-    const seatsLeft = extractSeatsLeft(rawText);
-    const purchaseUrl = extractPurchaseUrl($, chosen, baseUrl);
+    // Aynı parent çok genişse yalnızca yakın komşuları kullan, tarih/saat ayrıca eklenir.
+    const sessionText = cleanText(`${dateTimeText} ${hall} ${nextText}`);
+    const { dateText, timeText } = extractDateTime(sessionText);
+    const seatsLeft = extractSeatsLeft(sessionText);
+
     addSession({
-      status: statusFromText(rawText),
+      status: statusFromText(sessionText),
       seatsLeft,
       dateText,
       timeText,
       hall,
-      purchaseUrl,
-      adjacencyStatus: adjacencyFromText(rawText),
-      text: rawText.slice(0, 1800)
+      purchaseUrl: extractPurchaseUrl($, parent, baseUrl),
+      adjacencyStatus: adjacencyFromText(sessionText),
+      text: sessionText.slice(0, 1800)
     });
   });
+
+  // Bazı varyantlarda address ile time farklı seviyelerde yer alabiliyor.
+  // Bu durumda time öğesinden yukarı doğru küçük bir ortak konteyner bulmayı dene.
+  if (!map.size) {
+    $('time').each((_, node) => {
+      const timeEl = $(node);
+      const timeTextRaw = cleanText(timeEl.text());
+      if (!/\d{1,2}\s+(?:Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)/i.test(timeTextRaw)) return;
+
+      let container = timeEl;
+      let chosen = null;
+      for (let i = 0; i < 10 && container?.length; i++) {
+        const text = cleanText(container.text());
+        const hasHall = container.find('address').length > 0;
+        const hasTicketSignal = /(Son\s+\d+\s+Bilet|BİLETİNİ AL|TÜKENDİ|satışa açılacak|Yakında)/i.test(text);
+        if (hasHall && hasTicketSignal && text.length <= 12000) {
+          chosen = container;
+          break;
+        }
+        container = container.parent();
+      }
+      if (!chosen?.length) return;
+
+      const rawText = cleanText(chosen.text());
+      const { dateText, timeText } = extractDateTime(rawText);
+      const hall = cleanText(chosen.find('address').first().text()) || venueName;
+      const seatsLeft = extractSeatsLeft(rawText);
+      addSession({
+        status: statusFromText(rawText),
+        seatsLeft,
+        dateText,
+        timeText,
+        hall,
+        purchaseUrl: extractPurchaseUrl($, chosen, baseUrl),
+        adjacencyStatus: adjacencyFromText(rawText),
+        text: rawText.slice(0, 1800)
+      });
+    });
+  }
 
   // Eski / farklı sayfa yapıları için önceki genel yaklaşımı yedek olarak koru.
   if (!map.size) {
