@@ -81,6 +81,14 @@ async function runCheck() {
     await saveState(nextState);
   }
 
+  for (const item of results) {
+    const seatInfo = typeof item.seatsLeft === 'number' ? `${item.seatsLeft} bilet` : 'bilet sayısı bilinmiyor';
+    console.log(
+      `[session] ${item.title} | ${item.sessionDate || '-'} ${item.sessionTime || ''} | ` +
+      `${item.hall || '-'} | ${seatInfo} | ${item.reason || '-'}`
+    );
+  }
+
   const suitable = results.filter(x => x.availableForTwo).length;
   console.log(`[check] ${now.toISOString()} ${results.length} seans/kayıt, ${suitable} uygun, ${notified} Telegram bildirimi.`);
 }
@@ -352,30 +360,94 @@ function parseEvent(html, baseUrl, venueName) {
   const target = normalize(venueName);
   const map = new Map();
 
-  $('body *').each((_, node) => {
-    const el = $(node);
-    if (el.children().length > 8) return;
-    const text = normalize(el.text());
-    if (!text.includes(target)) return;
+  const addSession = candidate => {
+    if (!candidate) return;
+    const seatsLeft = typeof candidate.seatsLeft === 'number' ? candidate.seatsLeft : null;
+    let status = candidate.status || 'unknown';
 
-    const container = nearestSessionContainer($, el);
-    const rawText = cleanText(container.text() || el.text());
-    if (!rawText) return;
-    const status = statusFromText(rawText);
-    const seatsLeft = extractSeatsLeft(rawText);
-    const { dateText, timeText } = extractDateTime(rawText);
-    const hall = extractHall($, container, venueName);
-    const purchaseUrl = extractPurchaseUrl($, container, baseUrl);
-    const adjacencyStatus = adjacencyFromText(rawText);
-    const key = `${dateText}|${timeText}|${hall}|${seatsLeft}|${status}`;
-    const candidate = { status, seatsLeft, dateText, timeText, hall, purchaseUrl, adjacencyStatus, text: rawText.slice(0, 1800) };
+    // Biletinial bazen "Son 0 Bilet" yanında genel "BİLETİNİ AL" metnini de bırakıyor.
+    // Kalan bilet 0 ise bunu kesin tükenmiş kabul et.
+    if (seatsLeft === 0) status = 'sold_out';
+    else if (typeof seatsLeft === 'number' && seatsLeft > 0 && status === 'unknown') status = 'on_sale';
+
+    const normalized = { ...candidate, seatsLeft, status };
+    const key = [
+      normalized.dateText || '',
+      normalized.timeText || '',
+      normalize(normalized.hall || ''),
+      normalized.purchaseUrl || ''
+    ].join('|');
+
     const existing = map.get(key);
-    if (!existing || candidate.text.length > existing.text.length) map.set(key, candidate);
+    if (!existing || normalized.text.length > existing.text.length) map.set(key, normalized);
+  };
+
+  // Güncel etkinlik sayfasında seanslar bir tarih/saat <time> öğesi ve aynı bloktaki
+  // <address> salon bilgisiyle sunuluyor. Önce doğrudan bu blokları yakala.
+  $('time').each((_, node) => {
+    const timeEl = $(node);
+    const timeTextRaw = cleanText(timeEl.text());
+    if (!/\b\d{1,2}\s+(?:Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)\b/i.test(timeTextRaw)) return;
+
+    let container = timeEl;
+    let chosen = null;
+    for (let i = 0; i < 8 && container?.length; i++) {
+      const text = cleanText(container.text());
+      const hasHall = container.find('address').length > 0;
+      const hasTicketSignal = /(Son\s+\d+\s+Bilet|BİLETİNİ AL|TÜKENDİ|satışa açılacak|Yakında)/i.test(text);
+      if (hasHall && hasTicketSignal && text.length <= 5000) {
+        chosen = container;
+        break;
+      }
+      container = container.parent();
+    }
+    if (!chosen?.length) return;
+
+    const rawText = cleanText(chosen.text());
+    const { dateText, timeText } = extractDateTime(rawText);
+    const hall = cleanText(chosen.find('address').first().text()) || venueName;
+    const seatsLeft = extractSeatsLeft(rawText);
+    const purchaseUrl = extractPurchaseUrl($, chosen, baseUrl);
+    addSession({
+      status: statusFromText(rawText),
+      seatsLeft,
+      dateText,
+      timeText,
+      hall,
+      purchaseUrl,
+      adjacencyStatus: adjacencyFromText(rawText),
+      text: rawText.slice(0, 1800)
+    });
   });
+
+  // Eski / farklı sayfa yapıları için önceki genel yaklaşımı yedek olarak koru.
+  if (!map.size) {
+    $('body *').each((_, node) => {
+      const el = $(node);
+      if (el.children().length > 8) return;
+      const text = normalize(el.text());
+      if (!text.includes(target)) return;
+
+      const container = nearestSessionContainer($, el);
+      const rawText = cleanText(container.text() || el.text());
+      if (!rawText) return;
+      const { dateText, timeText } = extractDateTime(rawText);
+      addSession({
+        status: statusFromText(rawText),
+        seatsLeft: extractSeatsLeft(rawText),
+        dateText,
+        timeText,
+        hall: extractHall($, container, venueName),
+        purchaseUrl: extractPurchaseUrl($, container, baseUrl),
+        adjacencyStatus: adjacencyFromText(rawText),
+        text: rawText.slice(0, 1800)
+      });
+    });
+  }
 
   if (!map.size && normalize(bodyText).includes(target)) {
     const { dateText, timeText } = extractDateTime(bodyText);
-    map.set('fallback', {
+    addSession({
       status: statusFromText(bodyText),
       seatsLeft: extractSeatsLeft(bodyText),
       dateText,
@@ -387,7 +459,11 @@ function parseEvent(html, baseUrl, venueName) {
     });
   }
 
-  return { sessions: [...map.values()], pageStatus: statusFromText(bodyText) };
+  let pageStatus = statusFromText(bodyText);
+  const pageSeats = extractSeatsLeft(bodyText);
+  if (pageSeats === 0) pageStatus = 'sold_out';
+
+  return { sessions: [...map.values()], pageStatus };
 }
 
 function nearestSessionContainer($, start) {
