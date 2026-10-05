@@ -214,30 +214,64 @@ async function collectAvailability() {
 }
 
 async function fetchPage(url) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 25_000);
+  const attempts = [url];
+
   try {
-    const response = await fetch(url, {
-      redirect: 'follow',
-      signal: controller.signal,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/154 Safari/537.36',
-        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'tr-TR,tr;q=0.9,en;q=0.7',
-        'Cache-Control': 'no-cache'
-      }
-    });
-    if (!response.ok) throw new Error(`Biletinial HTTP ${response.status}`);
-    const html = await response.text();
-    if (!html || html.length < 500) throw new Error('Biletinial boş veya beklenmeyen bir yanıt döndürdü.');
-    const lower = html.toLocaleLowerCase('tr-TR');
-    if (lower.includes('your request is being verified') || lower.includes('isteğiniz doğrulanıyor')) {
-      throw new Error('Biletinial otomatik isteğe güvenlik doğrulaması döndürdü. GitHub Actions çalışmasında bu durum geçici veya IP kaynaklı olabilir.');
+    const parsed = new URL(url);
+    if ((parsed.hostname === 'biletinial.com' || parsed.hostname === 'www.biletinial.com') && /\/tr-tr\/(?:tiyatro|theatre)\//i.test(parsed.pathname)) {
+      const cdn = new URL(url);
+      cdn.hostname = 'cdn.biletinial.com';
+      attempts.push(cdn.href);
     }
-    return html;
-  } finally {
-    clearTimeout(timeout);
+  } catch {}
+
+  let lastError = null;
+
+  for (const attemptUrl of attempts) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 25_000);
+    try {
+      const response = await fetch(attemptUrl, {
+        redirect: 'follow',
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/154 Safari/537.36',
+          Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'tr-TR,tr;q=0.9,en;q=0.7',
+          'Cache-Control': 'no-cache'
+        }
+      });
+
+      if (!response.ok) {
+        lastError = new Error(`Biletinial HTTP ${response.status} (${attemptUrl})`);
+        continue;
+      }
+
+      const html = await response.text();
+      if (!html || html.length < 500) {
+        lastError = new Error(`Biletinial boş veya beklenmeyen bir yanıt döndürdü (${attemptUrl})`);
+        continue;
+      }
+
+      const lower = html.toLocaleLowerCase('tr-TR');
+      const verification = lower.includes('your request is being verified') || lower.includes('isteğiniz doğrulanıyor');
+
+      if (verification) {
+        console.warn(`[fetch] Güvenlik doğrulaması: ${attemptUrl}`);
+        lastError = new Error('Biletinial otomatik isteğe güvenlik doğrulaması döndürdü.');
+        continue;
+      }
+
+      if (attemptUrl !== url) console.log(`[fetch] CDN fallback başarılı: ${attemptUrl}`);
+      return html;
+    } catch (error) {
+      lastError = error;
+    } finally {
+      clearTimeout(timeout);
+    }
   }
+
+  throw lastError || new Error('Biletinial sayfası alınamadı.');
 }
 
 function parseVenue(html, baseUrl) {
