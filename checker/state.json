@@ -18,6 +18,15 @@
       "hall": "Kocaeli Büyükşehir Belediyesi Şehir Tiyatroları",
       "notifiedAt": null,
       "updatedAt": "2026-10-05T08:24:42.799Z"
+    },
+    "https://biletinial.com/tr-tr/tiyatro/karar-kocaeli-bb|17 ekim||büyükşehir belediyesi kocaeli kongre merkezi": {
+      "available": false,
+      "title": "Karar",
+      "sessionDate": "17 Ekim",
+      "sessionTime": "",
+      "hall": "Büyükşehir Belediyesi Kocaeli Kongre Merkezi",
+      "notifiedAt": null,
+      "updatedAt": "2026-10-05T08:45:45.930Z"
     }
   }
 }
