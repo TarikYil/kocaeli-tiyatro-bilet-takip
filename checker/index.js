@@ -416,7 +416,7 @@ function absoluteUrl(href, baseUrl) {
 function isEventUrl(url) {
   try {
     const p = new URL(url).pathname.replace(/\/+$/, '');
-    return /^\/tr-tr\/tiyatro\/[a-z0-9ğüşöçıİĞÜŞÖÇ_-]+$/i.test(p);
+    return /^\/tr-tr\/(?:tiyatro|theatre)\/[a-z0-9ğüşöçıİĞÜŞÖÇ_-]+$/i.test(p);
   } catch { return false; }
 }
 
