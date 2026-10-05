@@ -100,14 +100,12 @@ async function collectAvailability() {
   // Biletinial mekan sayfasındaki etkinlik kartları bazı durumlarda href içermiyor.
   // Kocaeli tiyatro liste sayfası ise aynı etkinliklerin gerçek detay URL'lerini içeriyor.
   let cityEventLinks = new Map();
+  let cityEventMeta = new Map();
   if (venue.events.some(event => !event.url || event.url === VENUE_URL)) {
     try {
       const cityHtml = await fetchPage(CITY_THEATRE_URL);
-      debugRawSnippet(cityHtml, 'karar-kocaeli-bb', 'city-list-slug');
-      debugRawSnippet(cityHtml, '>Karar<', 'city-list-title');
-      debugScriptSources(cityHtml);
-      debugEndpointCandidates(cityHtml);
       cityEventLinks = parseCityEventLinks(cityHtml, CITY_THEATRE_URL);
+      cityEventMeta = parseCityEventMeta(cityHtml, CITY_THEATRE_URL);
     } catch (error) {
       console.error(`[discovery] Kocaeli tiyatro liste sayfası okunamadı: ${error.message}`);
     }
@@ -117,7 +115,15 @@ async function collectAvailability() {
     const resolvedUrl = event.url && event.url !== VENUE_URL
       ? event.url
       : cityEventLinks.get(normalize(event.title)) || findEventUrlBySlug(cityEventLinks, event.title) || '';
-    return { ...event, url: resolvedUrl || event.url || '' };
+
+    const meta = cityEventMeta.get(normalize(event.title)) || {};
+    return {
+      ...event,
+      url: resolvedUrl || event.url || '',
+      dateText: event.dateText || meta.dateText || '',
+      timeText: event.timeText || meta.timeText || '',
+      hall: meta.hall || event.hall || ''
+    };
   });
 
   console.log(
@@ -194,7 +200,11 @@ async function collectAvailability() {
         availableForTwo: event.status === 'on_sale',
         seatsLeft: null,
         exactCountKnown: false,
-        reason: event.status === 'on_sale' ? 'detail_check_failed_but_sale_open' : 'detail_check_failed'
+        reason: event.status === 'on_sale'
+          ? 'sale_open_count_unknown'
+          : event.status === 'sold_out'
+            ? 'sold_out'
+            : 'detail_check_failed'
       });
     }
   }
@@ -384,6 +394,42 @@ function findEventUrlBySlug(eventMap, title) {
       return false;
     }
   }) || '';
+}
+
+function parseCityEventMeta(html, baseUrl) {
+  const $ = cheerio.load(html);
+  const map = new Map();
+
+  $('li').each((_, node) => {
+    const li = $(node);
+    const eventAnchor = li.find('a[href]').filter((__, a) => {
+      return isEventUrl(absoluteUrl($(a).attr('href'), baseUrl));
+    }).first();
+
+    if (!eventAnchor.length) return;
+
+    const url = absoluteUrl(eventAnchor.attr('href'), baseUrl);
+    const title = cleanText(
+      li.find('h1,h2,h3,h4,h5,h6').first().text() ||
+      eventAnchor.attr('title') ||
+      eventAnchor.text()
+    );
+    if (!title || title.length > 180) return;
+
+    const hall = cleanText(li.find('address small').first().text() || li.find('address').first().text());
+    const text = cleanText(li.text());
+    const listing = extractListingDate(text);
+
+    map.set(normalize(title), {
+      title,
+      url,
+      hall,
+      dateText: listing.dateText,
+      timeText: listing.timeText
+    });
+  });
+
+  return map;
 }
 
 function parseCityEventLinks(html, baseUrl) {
