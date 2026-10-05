@@ -10,16 +10,36 @@ const BOT_TOKEN = String(process.env.TELEGRAM_BOT_TOKEN || '').trim();
 const CHAT_ID = String(process.env.TELEGRAM_CHAT_ID || '').trim();
 const MIN_TICKETS = Math.max(2, Number(process.env.MIN_TICKETS || 2));
 const REPEAT_REMINDER_MINUTES = Math.max(0, Number(process.env.REPEAT_REMINDER_MINUTES || 0));
+const TEST_NOTIFICATION = /^(1|true|yes)$/i.test(String(process.env.TEST_NOTIFICATION || 'false').trim());
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const STATE_FILE = path.resolve(process.env.STATE_FILE || path.join(HERE, 'state.json'));
 
 validateConfig();
-await runCheck();
+
+if (TEST_NOTIFICATION) {
+  await runNotificationTest();
+} else {
+  await runCheck();
+}
 
 function validateConfig() {
   if (!BOT_TOKEN) throw new Error('TELEGRAM_BOT_TOKEN tanımlı değil.');
   if (!CHAT_ID) throw new Error('TELEGRAM_CHAT_ID tanımlı değil.');
   if (!/^\d+:[A-Za-z0-9_-]{20,}$/.test(BOT_TOKEN)) throw new Error('TELEGRAM_BOT_TOKEN biçimi geçersiz görünüyor.');
+}
+
+async function runNotificationTest() {
+  const text = [
+    '🧪 TEST BİLDİRİMİ — Bilet bulundu',
+    'Oyun: Karar (örnek)',
+    'Tarih/Saat: 17 Ekim · 20:30 (örnek)',
+    'Salon: Büyükşehir Belediyesi Kocaeli Kongre Merkezi',
+    'Boşluk: 2+ bilet (TEST — gerçek bilet durumu değildir)',
+    'Yan yana: Test bildirimi'
+  ].join('\n');
+
+  await sendTelegram(text, VENUE_URL);
+  console.log('[test] Telegram test bildirimi başarıyla gönderildi.');
 }
 
 async function runCheck() {
