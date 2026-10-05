@@ -153,6 +153,7 @@ async function collectAvailability() {
 
     try {
       const html = await fetchPage(event.url);
+      debugHtmlMarkers(html, event.title);
       const detail = parseEvent(html, event.url, VENUE_NAME);
 
       if (!detail.sessions.length) {
@@ -352,6 +353,21 @@ function nearestUsefulContainer($, start) {
     current = current.parent();
   }
   return best;
+}
+
+function debugHtmlMarkers(html, label) {
+  const text = cleanText(String(html).replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' '));
+  const markers = ['Son 0 Bilet', 'Son ', 'Büyükşehir Belediyesi Kocaeli Kongre Merkezi', '17 Ekim', '20:30'];
+  for (const marker of markers) {
+    const i = text.toLocaleLowerCase('tr-TR').indexOf(marker.toLocaleLowerCase('tr-TR'));
+    if (i < 0) {
+      console.log(`[debug] ${label} | "${marker}" bulunamadı`);
+      continue;
+    }
+    const start = Math.max(0, i - 220);
+    const end = Math.min(text.length, i + marker.length + 320);
+    console.log(`[debug] ${label} | ${marker}: ${text.slice(start, end)}`);
+  }
 }
 
 function parseEvent(html, baseUrl, venueName) {
