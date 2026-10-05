@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const VENUE_URL = 'https://biletinial.com/tr-tr/mekan/kocaeli-buyuksehir-belediyesi-sehir-tiyatrolari';
+const CITY_THEATRE_URL = 'https://biletinial.com/tr-tr/tiyatro/kocaeli';
 const VENUE_NAME = 'Kocaeli Büyükşehir Belediyesi Şehir Tiyatroları';
 const BOT_TOKEN = String(process.env.TELEGRAM_BOT_TOKEN || '').trim();
 const CHAT_ID = String(process.env.TELEGRAM_CHAT_ID || '').trim();
@@ -87,7 +88,31 @@ async function runCheck() {
 async function collectAvailability() {
   const venueHtml = await fetchPage(VENUE_URL);
   const venue = parseVenue(venueHtml, VENUE_URL);
-  const events = venue.events.slice(0, 25);
+
+  // Biletinial mekan sayfasındaki etkinlik kartları bazı durumlarda href içermiyor.
+  // Kocaeli tiyatro liste sayfası ise aynı etkinliklerin gerçek detay URL'lerini içeriyor.
+  let cityEventLinks = new Map();
+  if (venue.events.some(event => !event.url || event.url === VENUE_URL)) {
+    try {
+      const cityHtml = await fetchPage(CITY_THEATRE_URL);
+      cityEventLinks = parseCityEventLinks(cityHtml, CITY_THEATRE_URL);
+    } catch (error) {
+      console.error(`[discovery] Kocaeli tiyatro liste sayfası okunamadı: ${error.message}`);
+    }
+  }
+
+  const events = venue.events.slice(0, 25).map(event => {
+    const resolvedUrl = event.url && event.url !== VENUE_URL
+      ? event.url
+      : cityEventLinks.get(normalize(event.title)) || '';
+    return { ...event, url: resolvedUrl || event.url || '' };
+  });
+
+  console.log(
+    `[discovery] Mekan sayfasında ${events.length} etkinlik bulundu: ` +
+    (events.map(event => `${event.title}${event.dateText ? ` (${event.dateText})` : ''}`).join(', ') || 'yok')
+  );
+
   const results = [];
 
   for (const event of events) {
@@ -96,11 +121,13 @@ async function collectAvailability() {
       url: event.url || VENUE_URL,
       purchaseUrl: event.url || VENUE_URL,
       venueStatus: event.status || 'unknown',
-      hall: VENUE_NAME,
+      sessionDate: event.dateText || '',
+      sessionTime: event.timeText || '',
+      hall: event.hall || VENUE_NAME,
       adjacencyStatus: 'unknown'
     };
 
-    if (event.status === 'sold_out' || event.status === 'upcoming') {
+    if (event.status === 'sold_out' || event.status === 'upcoming' || event.status === 'ended') {
       results.push({ ...base, availableForTwo: false, reason: event.status });
       continue;
     }
@@ -111,7 +138,7 @@ async function collectAvailability() {
         availableForTwo: event.status === 'on_sale',
         seatsLeft: null,
         exactCountKnown: false,
-        reason: event.status === 'on_sale' ? 'sale_open_no_detail_url' : 'unknown'
+        reason: event.status === 'on_sale' ? 'sale_open_no_detail_url' : 'event_url_unresolved'
       });
       continue;
     }
@@ -119,13 +146,14 @@ async function collectAvailability() {
     try {
       const html = await fetchPage(event.url);
       const detail = parseEvent(html, event.url, VENUE_NAME);
+
       if (!detail.sessions.length) {
         results.push({
           ...base,
-          availableForTwo: event.status === 'on_sale' || detail.pageStatus === 'on_sale',
+          availableForTwo: detail.pageStatus === 'on_sale',
           seatsLeft: null,
           exactCountKnown: false,
-          reason: 'event_page_fallback'
+          reason: detail.pageStatus === 'on_sale' ? 'event_page_sale_open' : detail.pageStatus
         });
         continue;
       }
@@ -138,9 +166,9 @@ async function collectAvailability() {
           availableForTwo,
           seatsLeft: seatsKnown ? session.seatsLeft : null,
           exactCountKnown: seatsKnown,
-          sessionDate: session.dateText || '',
-          sessionTime: session.timeText || '',
-          hall: session.hall || VENUE_NAME,
+          sessionDate: session.dateText || event.dateText || '',
+          sessionTime: session.timeText || event.timeText || '',
+          hall: session.hall || event.hall || VENUE_NAME,
           adjacencyStatus: session.adjacencyStatus || 'unknown',
           purchaseUrl: session.purchaseUrl || event.url,
           reason: availableForTwo ? (seatsKnown ? 'two_or_more_confirmed' : 'sale_open') : session.status
@@ -166,12 +194,13 @@ async function collectAvailability() {
       venueStatus: venue.pageStatus,
       hall: VENUE_NAME,
       adjacencyStatus: 'unknown',
-      availableForTwo: venue.pageStatus === 'on_sale',
+      availableForTwo: false,
       seatsLeft: null,
       exactCountKnown: false,
-      reason: 'page_level_fallback'
+      reason: 'no_event_discovered'
     });
   }
+
   return results;
 }
 
@@ -207,28 +236,102 @@ function parseVenue(html, baseUrl) {
   const pageText = cleanText($('body').text());
   const map = new Map();
 
+  const upsert = candidate => {
+    if (!candidate?.title) return;
+    const key = normalize(candidate.title);
+    const existing = map.get(key);
+    if (!existing) {
+      map.set(key, candidate);
+      return;
+    }
+    const rank = { on_sale: 5, sold_out: 4, upcoming: 3, ended: 2, unknown: 1 };
+    const candidateHasUrl = Boolean(candidate.url && candidate.url !== baseUrl);
+    const existingHasUrl = Boolean(existing.url && existing.url !== baseUrl);
+    if (
+      (candidateHasUrl && !existingHasUrl) ||
+      (rank[candidate.status] || 0) > (rank[existing.status] || 0) ||
+      (candidate.dateText && !existing.dateText)
+    ) {
+      map.set(key, { ...existing, ...candidate });
+    }
+  };
+
   $('a[href]').each((_, node) => {
     const anchor = $(node);
     const url = absoluteUrl(anchor.attr('href'), baseUrl);
     if (!isEventUrl(url)) return;
     const container = nearestUsefulContainer($, anchor);
     const text = cleanText(container.text() || anchor.text());
-    let title = cleanText(anchor.find('h1,h2,h3,h4,h5,h6').first().text() || container.find('h1,h2,h3,h4,h5,h6').first().text() || anchor.text());
+    let title = cleanText(
+      anchor.find('h1,h2,h3,h4,h5,h6').first().text() ||
+      container.find('h1,h2,h3,h4,h5,h6').first().text() ||
+      anchor.text()
+    );
     title = title.replace(/^(TÜKENDİ|BİLETİNİ AL|Yakında)\s*/i, '').trim();
     if (!title || title.length > 180) title = cleanText(anchor.find('img[alt]').first().attr('alt') || '');
     if (!title || title.length < 2) return;
+    const dt = extractListingDate(text);
+    upsert({
+      title,
+      url,
+      status: statusFromText(text),
+      dateText: dt.dateText,
+      timeText: dt.timeText,
+      text: text.slice(0, 1200)
+    });
+  });
 
-    const status = statusFromText(text);
-    const existing = map.get(url);
-    const candidate = { title, url, status, text: text.slice(0, 1200) };
-    if (!existing) map.set(url, candidate);
-    else {
-      const rank = { on_sale: 4, sold_out: 3, upcoming: 2, unknown: 1 };
-      if ((rank[status] || 0) > (rank[existing.status] || 0) || text.length > existing.text.length) map.set(url, candidate);
-    }
+  // Güncel mekan sayfasında etkinlik kartı bazen link yerine yalnızca h3 + tarih olarak geliyor.
+  $('h3').each((_, node) => {
+    const heading = $(node);
+    const title = cleanText(heading.text());
+    if (!title || title.length < 2 || title.length > 180) return;
+    const container = heading.closest('li');
+    if (!container.length) return;
+    const text = cleanText(container.text());
+    const dt = extractListingDate(text);
+    if (!dt.dateText) return;
+
+    let url = '';
+    container.find('a[href]').each((__, linkNode) => {
+      if (url) return;
+      const candidate = absoluteUrl($(linkNode).attr('href'), baseUrl);
+      if (isEventUrl(candidate)) url = candidate;
+    });
+
+    upsert({
+      title,
+      url,
+      status: statusFromText(text),
+      dateText: dt.dateText,
+      timeText: dt.timeText,
+      text: text.slice(0, 1200)
+    });
   });
 
   return { events: [...map.values()], pageStatus: statusFromText(pageText) };
+}
+
+function parseCityEventLinks(html, baseUrl) {
+  const $ = cheerio.load(html);
+  const map = new Map();
+
+  $('a[href]').each((_, node) => {
+    const anchor = $(node);
+    const url = absoluteUrl(anchor.attr('href'), baseUrl);
+    if (!isEventUrl(url)) return;
+
+    const li = anchor.closest('li');
+    const title = cleanText(
+      anchor.find('h1,h2,h3,h4,h5,h6').first().text() ||
+      li.find('h1,h2,h3,h4,h5,h6').first().text() ||
+      anchor.text()
+    );
+    if (!title || title.length < 2 || title.length > 180) return;
+    if (!map.has(normalize(title))) map.set(normalize(title), url);
+  });
+
+  return map;
 }
 
 function nearestUsefulContainer($, start) {
@@ -349,8 +452,20 @@ function extractDateTime(text) {
   };
 }
 
+function extractListingDate(text) {
+  const t = cleanText(text);
+  const months = '(Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)';
+  const listing = t.match(new RegExp(`${months}\\s*-\\s*(\\d{1,2})`, 'i'));
+  const time = t.match(/\b([01]?\d|2[0-3])[.:]([0-5]\d)\b/);
+  return {
+    dateText: listing ? `${listing[2]} ${listing[1]}` : '',
+    timeText: time ? `${time[1].padStart(2, '0')}:${time[2]}` : ''
+  };
+}
+
 function statusFromText(text) {
   const t = normalize(text);
+  if (/bu etkinlik gerçekleşti|etkinlik gerçekleşti|etkinlik sona erdi|event happened|event ended/.test(t)) return 'ended';
   if (/tükendi|bilet tükendi|sold out/.test(t)) return 'sold_out';
   if (/yakında|satışa açılacak|henüz satışta değil/.test(t)) return 'upcoming';
   if (/biletini al|satın al|bilet al|koltuk seç/.test(t)) return 'on_sale';
