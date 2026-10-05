@@ -103,6 +103,8 @@ async function collectAvailability() {
   if (venue.events.some(event => !event.url || event.url === VENUE_URL)) {
     try {
       const cityHtml = await fetchPage(CITY_THEATRE_URL);
+      debugRawSnippet(cityHtml, 'karar-kocaeli-bb', 'city-list-slug');
+      debugRawSnippet(cityHtml, '>Karar<', 'city-list-title');
       cityEventLinks = parseCityEventLinks(cityHtml, CITY_THEATRE_URL);
     } catch (error) {
       console.error(`[discovery] Kocaeli tiyatro liste sayfası okunamadı: ${error.message}`);
@@ -426,6 +428,23 @@ function nearestUsefulContainer($, start) {
     current = current.parent();
   }
   return best;
+}
+
+function debugRawSnippet(html, marker, label) {
+  const source = String(html || '');
+  const lower = source.toLocaleLowerCase('tr-TR');
+  const i = lower.indexOf(String(marker).toLocaleLowerCase('tr-TR'));
+  if (i < 0) {
+    console.log(`[raw] ${label} | marker bulunamadı: ${marker}`);
+    return;
+  }
+  const start = Math.max(0, i - 900);
+  const end = Math.min(source.length, i + marker.length + 1600);
+  const snippet = source.slice(start, end)
+    .replace(/[\r\n\t]+/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .slice(0, 2800);
+  console.log(`[raw] ${label}: ${snippet}`);
 }
 
 function debugHtmlMarkers(html, label) {
