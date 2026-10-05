@@ -112,13 +112,13 @@ async function collectAvailability() {
   const events = venue.events.slice(0, 25).map(event => {
     const resolvedUrl = event.url && event.url !== VENUE_URL
       ? event.url
-      : cityEventLinks.get(normalize(event.title)) || '';
+      : cityEventLinks.get(normalize(event.title)) || findEventUrlBySlug(cityEventLinks, event.title) || '';
     return { ...event, url: resolvedUrl || event.url || '' };
   });
 
   console.log(
     `[discovery] Mekan sayfasında ${events.length} etkinlik bulundu: ` +
-    (events.map(event => `${event.title}${event.dateText ? ` (${event.dateText})` : ''}`).join(', ') || 'yok')
+    (events.map(event => `${event.title}${event.dateText ? ` (${event.dateText})` : ''}${event.url ? ` -> ${event.url}` : ' -> URL yok'}`).join(', ') || 'yok')
   );
 
   const results = [];
@@ -321,9 +321,37 @@ function parseVenue(html, baseUrl) {
   return { events: [...map.values()], pageStatus: statusFromText(pageText) };
 }
 
+function slugifyTitle(value = '') {
+  return normalize(value)
+    .replace(/ı/g, 'i')
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ş/g, 's')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function findEventUrlBySlug(eventMap, title) {
+  const slug = slugifyTitle(title);
+  if (!slug) return '';
+
+  const urls = [...new Set(eventMap.values())];
+  return urls.find(url => {
+    try {
+      const pathSlug = new URL(url).pathname.split('/').filter(Boolean).pop() || '';
+      return pathSlug === slug || pathSlug.startsWith(`${slug}-`) || pathSlug.includes(`-${slug}-`);
+    } catch {
+      return false;
+    }
+  }) || '';
+}
+
 function parseCityEventLinks(html, baseUrl) {
   const $ = cheerio.load(html);
   const map = new Map();
+  let unnamed = 0;
 
   $('a[href]').each((_, node) => {
     const anchor = $(node);
@@ -331,15 +359,26 @@ function parseCityEventLinks(html, baseUrl) {
     if (!isEventUrl(url)) return;
 
     const li = anchor.closest('li');
-    const title = cleanText(
+    let title = cleanText(
       anchor.find('h1,h2,h3,h4,h5,h6').first().text() ||
       li.find('h1,h2,h3,h4,h5,h6').first().text() ||
+      anchor.attr('title') ||
+      anchor.find('img[alt]').first().attr('alt') ||
       anchor.text()
     );
-    if (!title || title.length < 2 || title.length > 180) return;
-    if (!map.has(normalize(title))) map.set(normalize(title), url);
+
+    title = title.replace(/^(TÜKENDİ|BİLETİNİ AL|Yakında)\s*/i, '').trim();
+
+    if (title && title.length >= 2 && title.length <= 180) {
+      if (!map.has(normalize(title))) map.set(normalize(title), url);
+    }
+
+    // URL'yi her durumda sakla. Başlık DOM'da yoksa slug eşlemesi bunu kullanacak.
+    const uniqueKey = `__url_${unnamed++}`;
+    map.set(uniqueKey, url);
   });
 
+  console.log(`[discovery] Kocaeli liste sayfasından ${new Set(map.values()).size} etkinlik URL'si bulundu.`);
   return map;
 }
 
