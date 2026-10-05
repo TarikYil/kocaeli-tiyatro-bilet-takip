@@ -1,0 +1,59 @@
+name: Kocaeli Tiyatro Bilet Takip
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: kocaeli-tiyatro-ticket-check
+  cancel-in-progress: false
+
+jobs:
+  check-tickets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+
+    steps:
+      - name: Repo'yu al
+        uses: actions/checkout@v4
+
+      - name: Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: node_modules önbelleği
+        id: node-cache
+        uses: actions/cache@v4
+        with:
+          path: checker/node_modules
+          key: ${{ runner.os }}-checker-node-${{ hashFiles('checker/package.json') }}
+
+      - name: Bağımlılıkları kur
+        if: steps.node-cache.outputs.cache-hit != 'true'
+        run: npm install --prefix checker --omit=dev --no-audit --no-fund
+
+      - name: Biletleri kontrol et
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          MIN_TICKETS: ${{ vars.MIN_TICKETS || '2' }}
+          REPEAT_REMINDER_MINUTES: ${{ vars.REPEAT_REMINDER_MINUTES || '0' }}
+        run: node checker/index.js
+
+      - name: Bildirim durumunu kaydet
+        shell: bash
+        run: |
+          if git diff --quiet -- checker/state.json; then
+            echo "State değişmedi, commit gerekmiyor."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add checker/state.json
+          git commit -m "chore: update ticket notification state [skip ci]"
+          git push
