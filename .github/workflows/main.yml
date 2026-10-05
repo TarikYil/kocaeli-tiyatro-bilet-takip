@@ -4,6 +4,12 @@ on:
   schedule:
     - cron: "*/5 * * * *"
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "checker/**"
+      - ".github/workflows/main.yml"
 
 permissions:
   contents: write
