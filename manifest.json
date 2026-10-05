@@ -1,0 +1,37 @@
+{
+  "manifest_version": 3,
+  "name": "Kocaeli Şehir Tiyatroları Bilet Takipçisi",
+  "version": "1.2.0",
+  "description": "Kocaeli Şehir Tiyatroları biletlerini seans bazında takip eder, ayrıntılı masaüstü ve Telegram bildirimi gönderir.",
+  "minimum_chrome_version": "109",
+  "permissions": [
+    "alarms",
+    "notifications",
+    "storage",
+    "offscreen"
+  ],
+  "host_permissions": [
+    "https://biletinial.com/*",
+    "https://www.biletinial.com/*",
+    "https://api.telegram.org/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Kocaeli Tiyatro Bilet Takipçisi",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

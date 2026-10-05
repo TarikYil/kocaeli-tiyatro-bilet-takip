@@ -1,0 +1,36 @@
+KOCAELİ TİYATRO BİLET TAKİPÇİSİ v1.2 - ÜCRETSİZ SÜRÜM
+
+CHROME
+1) ZIP'i çıkar.
+2) chrome://extensions aç.
+3) Geliştirici modu açık olsun.
+4) Paketlenmemiş öğe yükle.
+5) kocaeli_tiyatro_bilet_takip klasörünü seç.
+6) Eklentiyi açıp kontrol sıklığını seç.
+7) İstersen Telegram bilgilerini girip Telegram test yap.
+
+TELEGRAM
+1) @BotFather ile bot oluştur.
+2) Bota kendi hesabından mesaj gönder.
+3) Bot Token ve Chat ID değerlerini al.
+4) Token'ı kimseyle paylaşma.
+
+BİLGİSAYAR KAPALIYKEN ÜCRETSİZ 7/24 TAKİP
+1) GitHub'da PUBLIC repo oluştur.
+2) Bu klasörün tamamını repoya yükle.
+3) Settings > Secrets and variables > Actions bölümünü aç.
+4) TELEGRAM_BOT_TOKEN secret'ını ekle.
+5) TELEGRAM_CHAT_ID secret'ını ekle.
+6) Actions sekmesine git.
+7) Kocaeli Tiyatro Bilet Takip workflow'unu seç.
+8) Run workflow ile ilk testi çalıştır.
+9) Sonrasında sistem yaklaşık her 5 dakikada otomatik kontrol eder.
+
+İSTEĞE BAĞLI TEKRAR HATIRLATMA
+Repository Variable oluştur:
+REPEAT_REMINDER_MINUTES = 5
+
+Tekrar hatırlatma istemiyorsan değişkeni oluşturma veya 0 yap.
+
+NOT
+Tamamen ücretsiz kullanım için repo Public olmalıdır. Private repolarda GitHub Actions ücretsiz dakika kotası uygulanabilir.

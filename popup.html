@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kocaeli Tiyatro Bilet Takipçisi</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main class="wrap">
+    <header>
+      <div class="logo">KT</div>
+      <div>
+        <h1>Kocaeli Bilet Takipçisi</h1>
+        <p>Şehir Tiyatroları · 2 kişilik bilet</p>
+      </div>
+    </header>
+
+    <section class="card control-card">
+      <label class="toggle-row">
+        <span>
+          <strong>Takip</strong>
+          <small id="enabledText">Açık</small>
+        </span>
+        <input id="enabled" type="checkbox">
+        <span class="switch"></span>
+      </label>
+
+      <label class="field">
+        <span>Kontrol sıklığı</span>
+        <select id="interval">
+          <option value="1">Her 1 dakika</option>
+          <option value="2">Her 2 dakika</option>
+          <option value="5">Her 5 dakika</option>
+          <option value="10">Her 10 dakika</option>
+          <option value="15">Her 15 dakika</option>
+          <option value="30">Her 30 dakika</option>
+        </select>
+      </label>
+
+      <label class="field">
+        <span>Bilet açık kalırsa tekrar hatırlat</span>
+        <select id="repeatReminder">
+          <option value="0">Tekrar bildirme</option>
+          <option value="5">5 dakika sonra</option>
+          <option value="10">10 dakika sonra</option>
+          <option value="15">15 dakika sonra</option>
+          <option value="30">30 dakika sonra</option>
+        </select>
+      </label>
+
+      <button id="checkNow" class="primary">Şimdi kontrol et</button>
+    </section>
+
+    <section class="card telegram-card">
+      <label class="toggle-row">
+        <span>
+          <strong>Telegram bildirimi</strong>
+          <small id="telegramEnabledText">Kapalı</small>
+        </span>
+        <input id="telegramEnabled" type="checkbox">
+        <span class="switch"></span>
+      </label>
+
+      <label class="field">
+        <span>Bot Token</span>
+        <input id="telegramBotToken" type="password" autocomplete="off" placeholder="123456789:AA...">
+      </label>
+
+      <label class="field">
+        <span>Chat ID</span>
+        <input id="telegramChatId" type="text" inputmode="numeric" placeholder="123456789">
+      </label>
+
+      <div class="button-row">
+        <button id="saveTelegram" class="secondary">Kaydet</button>
+        <button id="testTelegram" class="secondary">Telegram test</button>
+      </div>
+      <small id="telegramStatus" class="telegram-status"></small>
+    </section>
+
+    <section class="card">
+      <div class="status-line">
+        <span id="dot" class="dot idle"></span>
+        <div>
+          <strong id="statusTitle">Hazırlanıyor…</strong>
+          <small id="statusDetail"></small>
+        </div>
+      </div>
+      <div id="events" class="events"></div>
+    </section>
+
+    <button id="openVenue" class="link-button">Biletinial sayfasını aç ↗</button>
+    <p class="note">Bildirimde oyun, tarih, saat, salon ve bilet sayısı gösterilir. Yan yana koltuk bilgisi kesin alınamıyorsa “doğrulanamadı” yazar. Bilgisayar kapalıyken ücretsiz takip için paketteki GitHub Actions kurulumu kullanılabilir.</p>
+  </main>
+  <script src="popup.js"></script>
+</body>
+</html>

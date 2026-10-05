@@ -1,0 +1,48 @@
+:root {
+  color-scheme: light;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; width: 410px; background: #f4f6f8; color: #17191c; }
+.wrap { padding: 16px; }
+header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.logo { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: #17191c; color: white; font-weight: 800; letter-spacing: .5px; }
+h1 { font-size: 16px; line-height: 1.2; margin: 0 0 3px; }
+header p { margin: 0; color: #68707a; font-size: 12px; }
+.card { background: white; border: 1px solid #e6e9ed; border-radius: 14px; padding: 14px; margin-bottom: 12px; box-shadow: 0 4px 16px rgba(0,0,0,.035); }
+.control-card, .telegram-card { display: grid; gap: 13px; }
+.toggle-row { display: flex; align-items: center; justify-content: space-between; position: relative; cursor: pointer; }
+.toggle-row > span:first-child { display: grid; gap: 2px; }
+small { color: #717984; font-size: 11px; line-height: 1.4; }
+#enabled, #telegramEnabled { position: absolute; opacity: 0; pointer-events: none; }
+.switch { width: 42px; height: 24px; border-radius: 999px; background: #cbd1d7; position: relative; transition: .2s; }
+.switch::after { content: ''; position: absolute; width: 18px; height: 18px; top: 3px; left: 3px; border-radius: 50%; background: white; transition: .2s; box-shadow: 0 1px 4px rgba(0,0,0,.2); }
+#enabled:checked + .switch, #telegramEnabled:checked + .switch { background: #1f7a47; }
+#enabled:checked + .switch::after, #telegramEnabled:checked + .switch::after { transform: translateX(18px); }
+.field { display: grid; gap: 6px; font-size: 12px; color: #49515a; }
+select, input[type="text"], input[type="password"] { width: 100%; padding: 9px 10px; border: 1px solid #d8dde3; border-radius: 10px; background: white; font: inherit; color: #17191c; outline: none; }
+select:focus, input:focus { border-color: #929aa3; box-shadow: 0 0 0 3px rgba(23,25,28,.06); }
+button { font: inherit; cursor: pointer; }
+.primary { border: 0; border-radius: 10px; background: #17191c; color: white; padding: 10px 12px; font-weight: 700; }
+.secondary { border: 1px solid #d8dde3; border-radius: 10px; background: white; color: #252a30; padding: 9px 10px; font-weight: 700; }
+.primary:disabled, .secondary:disabled { opacity: .55; cursor: wait; }
+.button-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.telegram-status { min-height: 16px; overflow-wrap: anywhere; }
+.status-line { display: flex; gap: 10px; align-items: flex-start; }
+.status-line > div { display: grid; gap: 3px; }
+.dot { width: 10px; height: 10px; margin-top: 5px; border-radius: 50%; background: #9da5ae; flex: none; }
+.dot.ok { background: #1f8b50; }
+.dot.warn { background: #d78a00; }
+.dot.error { background: #c93636; }
+.dot.idle { background: #8c949d; }
+.events { margin-top: 12px; display: grid; gap: 9px; max-height: 330px; overflow: auto; padding-right: 2px; }
+.event { border-top: 1px solid #edf0f2; padding-top: 9px; display: grid; gap: 4px; }
+.event:first-child { border-top: 0; padding-top: 0; }
+.event a { color: #17191c; font-size: 12px; font-weight: 700; text-decoration: none; }
+.event a:hover { text-decoration: underline; }
+.badge { display: inline-flex; width: fit-content; padding: 3px 7px; border-radius: 999px; font-size: 10px; font-weight: 700; }
+.badge.available { background: #e4f6eb; color: #176b3c; }
+.badge.sold { background: #f1f2f4; color: #68707a; }
+.badge.upcoming { background: #fff3d9; color: #8b5b00; }
+.link-button { display: block; width: 100%; border: 0; background: transparent; color: #303842; text-decoration: underline; padding: 5px 0 2px; font-size: 12px; }
+.note { font-size: 10px; line-height: 1.5; color: #7a828b; margin: 8px 2px 0; }
