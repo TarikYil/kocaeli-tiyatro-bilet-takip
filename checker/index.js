@@ -135,7 +135,7 @@ async function collectAvailability() {
       adjacencyStatus: 'unknown'
     };
 
-    if (event.status === 'sold_out' || event.status === 'upcoming' || event.status === 'ended') {
+    if (event.status === 'upcoming' || event.status === 'ended') {
       results.push({ ...base, availableForTwo: false, reason: event.status });
       continue;
     }
@@ -146,7 +146,7 @@ async function collectAvailability() {
         availableForTwo: event.status === 'on_sale',
         seatsLeft: null,
         exactCountKnown: false,
-        reason: event.status === 'on_sale' ? 'sale_open_no_detail_url' : 'event_url_unresolved'
+        reason: event.status === 'on_sale' ? 'sale_open_no_detail_url' : event.status === 'sold_out' ? 'sold_out_no_detail_url' : 'event_url_unresolved'
       });
       continue;
     }
