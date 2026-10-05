@@ -441,8 +441,8 @@ function debugScriptSources(html) {
 function debugEndpointCandidates(html) {
   const source = String(html || '');
   const pattern = new RegExp(
-    '(?:https?:\\/\\/[^"\\'\\s<>]+|\\/(?:api|Api|ajax|Ajax|event|Event|session|Session|seans|Seans|ticket|Ticket|seat|Seat)[A-Za-z0-9_\\-\\/.?=&%:]*)',
-    'g'
+    "(?:https?:\\/\\/[^\"'\\s<>]+|\\/(?:api|Api|ajax|Ajax|event|Event|session|Session|seans|Seans|ticket|Ticket|seat|Seat)[A-Za-z0-9_\\-\\/.?=&%:]*)",
+    "g"
   );
   const matches = [...source.matchAll(pattern)]
     .map(m => m[0])
