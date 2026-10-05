@@ -105,6 +105,8 @@ async function collectAvailability() {
       const cityHtml = await fetchPage(CITY_THEATRE_URL);
       debugRawSnippet(cityHtml, 'karar-kocaeli-bb', 'city-list-slug');
       debugRawSnippet(cityHtml, '>Karar<', 'city-list-title');
+      debugScriptSources(cityHtml);
+      debugEndpointCandidates(cityHtml);
       cityEventLinks = parseCityEventLinks(cityHtml, CITY_THEATRE_URL);
     } catch (error) {
       console.error(`[discovery] Kocaeli tiyatro liste sayfası okunamadı: ${error.message}`);
@@ -428,6 +430,21 @@ function nearestUsefulContainer($, start) {
     current = current.parent();
   }
   return best;
+}
+
+function debugScriptSources(html) {
+  const $ = cheerio.load(html);
+  const srcs = [...new Set($('script[src]').map((_, el) => $(el).attr('src')).get().filter(Boolean))];
+  console.log('[scripts] ' + srcs.join(' | '));
+}
+
+function debugEndpointCandidates(html) {
+  const source = String(html || '');
+  const matches = [...source.matchAll(/(?:https?:\\/\\/[^"'\\s<>]+|\\/(?:api|Api|ajax|Ajax|event|Event|session|Session|seans|Seans|ticket|Ticket|seat|Seat)[A-Za-z0-9_\\-\\/.?=&%:]*)/g)]
+    .map(m => m[0])
+    .filter(x => x.length < 300);
+  const unique = [...new Set(matches)].slice(0, 120);
+  console.log('[endpoints] ' + unique.join(' | '));
 }
 
 function debugRawSnippet(html, marker, label) {
