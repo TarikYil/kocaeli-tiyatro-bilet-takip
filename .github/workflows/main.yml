@@ -4,6 +4,12 @@ on:
   schedule:
     - cron: "*/5 * * * *"
   workflow_dispatch:
+    inputs:
+      test_notification:
+        description: "Telegram test bildirimi gönder"
+        required: false
+        default: false
+        type: boolean
   push:
     branches:
       - main
@@ -49,6 +55,7 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           MIN_TICKETS: ${{ vars.MIN_TICKETS || '2' }}
           REPEAT_REMINDER_MINUTES: ${{ vars.REPEAT_REMINDER_MINUTES || '0' }}
+          TEST_NOTIFICATION: ${{ inputs.test_notification || 'false' }}
         run: node checker/index.js
 
       - name: Bildirim durumunu kaydet
