@@ -27,6 +27,69 @@
       "hall": "Büyükşehir Belediyesi Kocaeli Kongre Merkezi",
       "notifiedAt": null,
       "updatedAt": "2026-10-05T08:45:45.930Z"
+    },
+    "https://biletinial.com/tr-tr/tiyatro/karar-kocaeli-bb|17 ekim||birden fazla mekanda": {
+      "available": true,
+      "title": "Karar",
+      "sessionDate": "17 Ekim",
+      "sessionTime": "",
+      "hall": "Birden fazla mekanda",
+      "notifiedAt": "2026-10-07T08:49:00.990Z",
+      "updatedAt": "2026-10-07T08:49:00.990Z"
+    },
+    "https://biletinial.com/tr-tr/mekan/kocaeli-buyuksehir-belediyesi-sehir-tiyatrolari|12 kasım||kocaeli büyükşehir belediyesi şehir tiyatroları": {
+      "available": true,
+      "title": "On İkinci Gece",
+      "sessionDate": "12 Kasım",
+      "sessionTime": "",
+      "hall": "Kocaeli Büyükşehir Belediyesi Şehir Tiyatroları",
+      "notifiedAt": "2026-10-07T08:49:00.990Z",
+      "updatedAt": "2026-10-07T08:49:00.990Z"
+    },
+    "https://biletinial.com/tr-tr/mekan/kocaeli-buyuksehir-belediyesi-sehir-tiyatrolari|15 kasım||kocaeli büyükşehir belediyesi şehir tiyatroları": {
+      "available": true,
+      "title": "Evvel Zaman İçinde",
+      "sessionDate": "15 Kasım",
+      "sessionTime": "",
+      "hall": "Kocaeli Büyükşehir Belediyesi Şehir Tiyatroları",
+      "notifiedAt": "2026-10-07T08:49:00.990Z",
+      "updatedAt": "2026-10-07T08:49:00.990Z"
+    },
+    "https://biletinial.com/tr-tr/mekan/kocaeli-buyuksehir-belediyesi-sehir-tiyatrolari|17 kasım||kocaeli büyükşehir belediyesi şehir tiyatroları": {
+      "available": true,
+      "title": "Unutmak",
+      "sessionDate": "17 Kasım",
+      "sessionTime": "",
+      "hall": "Kocaeli Büyükşehir Belediyesi Şehir Tiyatroları",
+      "notifiedAt": "2026-10-07T08:49:00.990Z",
+      "updatedAt": "2026-10-07T08:49:00.990Z"
+    },
+    "https://biletinial.com/tr-tr/mekan/kocaeli-buyuksehir-belediyesi-sehir-tiyatrolari|18 kasım||kocaeli büyükşehir belediyesi şehir tiyatroları": {
+      "available": true,
+      "title": "Hiç Kimsenin Öyküsü",
+      "sessionDate": "18 Kasım",
+      "sessionTime": "",
+      "hall": "Kocaeli Büyükşehir Belediyesi Şehir Tiyatroları",
+      "notifiedAt": "2026-10-07T08:49:00.990Z",
+      "updatedAt": "2026-10-07T08:49:00.990Z"
+    },
+    "https://biletinial.com/tr-tr/mekan/kocaeli-buyuksehir-belediyesi-sehir-tiyatrolari|27 kasım||kocaeli büyükşehir belediyesi şehir tiyatroları": {
+      "available": true,
+      "title": "Ve Ateş Bizi Tüketiyor",
+      "sessionDate": "27 Kasım",
+      "sessionTime": "",
+      "hall": "Kocaeli Büyükşehir Belediyesi Şehir Tiyatroları",
+      "notifiedAt": "2026-10-07T08:49:00.990Z",
+      "updatedAt": "2026-10-07T08:49:00.990Z"
+    },
+    "https://biletinial.com/tr-tr/mekan/kocaeli-buyuksehir-belediyesi-sehir-tiyatrolari|29 kasım||kocaeli büyükşehir belediyesi şehir tiyatroları": {
+      "available": true,
+      "title": "Kusursuz Dünyaya Yolculuk",
+      "sessionDate": "29 Kasım",
+      "sessionTime": "",
+      "hall": "Kocaeli Büyükşehir Belediyesi Şehir Tiyatroları",
+      "notifiedAt": "2026-10-07T08:49:00.990Z",
+      "updatedAt": "2026-10-07T08:49:00.990Z"
     }
   }
 }
